@@ -20,7 +20,7 @@ export default function Hero() {
           />
         </div>
         <h1 className="text-5xl md:text-7xl font-medium mb-8 text-center tracking-tight">
-          Hi, I'm <span className="font-semibold">Hamzah Marie</span>
+          Hi, I&apos;m <span className="font-semibold">Hamzah Marie</span>
         </h1>
         <p className="text-xl md:text-2xl text-gray-600 mb-12 max-w-2xl mx-auto text-center font-light leading-relaxed">
           CS student & full-stack developer (Next.js/TypeScript) building fast, accessible web apps.

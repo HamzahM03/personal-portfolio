@@ -41,9 +41,9 @@ export default function Contact() {
     <Section id="contact" className="py-32 px-6 lg:px-8 bg-gray-50">
       <div className="max-w-2xl mx-auto">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-light mb-8 tracking-tight">Let's Work Together</h2>
+          <h2 className="text-3xl md:text-4xl font-light mb-8 tracking-tight">Let&apos;s Work Together</h2>
           <p className="text-gray-600 leading-relaxed">
-            I'm always interested in new opportunities and interesting projects. Let's connect and see how we can
+            I&apos;m always interested in new opportunities and interesting projects. Let's connect and see how we can
             create something amazing together.
           </p>
         </div>
