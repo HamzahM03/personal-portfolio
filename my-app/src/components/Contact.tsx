@@ -1,7 +1,42 @@
-import Section from "./Section"
-import { Mail } from "lucide-react"
+"use client";
+
+import Section from "./Section";
+import { Mail } from "lucide-react";
+import { useState } from "react";
+
+type SubmitState = {
+  loading: boolean;
+  ok: boolean;
+  error: string;
+};
 
 export default function Contact() {
+  const [status, setStatus] = useState<SubmitState>({ loading: false, ok: false, error: "" });
+
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setStatus({ loading: true, ok: false, error: "" });
+
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    const payload = Object.fromEntries(formData.entries());
+
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Failed to send");
+      setStatus({ loading: false, ok: true, error: "" });
+      form.reset();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Something went wrong";
+      setStatus({ loading: false, ok: false, error: msg });
+    }
+  }
+
   return (
     <Section id="contact" className="py-32 px-6 lg:px-8 bg-gray-50">
       <div className="max-w-2xl mx-auto">
@@ -13,7 +48,10 @@ export default function Contact() {
           </p>
         </div>
 
-        <form className="space-y-6" action="#" method="post">
+        <form className="space-y-6" onSubmit={onSubmit}>
+          {/* Honeypot (hidden) */}
+          <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" />
+
           <div className="grid md:grid-cols-2 gap-6">
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
@@ -57,17 +95,20 @@ export default function Contact() {
             />
           </div>
 
-          <div className="text-center pt-4">
+          <div className="text-center pt-2">
             <button
               type="submit"
-              className="bg-black text-white px-8 py-4 hover:bg-gray-800 transition-colors inline-flex items-center gap-2 text-sm font-medium rounded"
+              disabled={status.loading}
+              className="bg-black text-white px-8 py-4 hover:bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-2 text-sm font-medium rounded"
             >
               <Mail size={18} />
-              Send Message
+              {status.loading ? "Sending..." : "Send Message"}
             </button>
+            {status.ok && <p className="mt-3 text-green-600 text-sm">Message sent! I’ll get back to you soon.</p>}
+            {status.error && <p className="mt-3 text-red-600 text-sm">{status.error}</p>}
           </div>
         </form>
       </div>
     </Section>
-  )
+  );
 }
