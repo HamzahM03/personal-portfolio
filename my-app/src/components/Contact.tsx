@@ -43,7 +43,7 @@ export default function Contact() {
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-light mb-8 tracking-tight">Let&apos;s Work Together</h2>
           <p className="text-gray-600 leading-relaxed">
-            I&apos;m always interested in new opportunities and interesting projects. Let's connect and see how we can
+            I&apos;m always interested in new opportunities and interesting projects. Let&apos;s connect and see how we can
             create something amazing together.
           </p>
         </div>
