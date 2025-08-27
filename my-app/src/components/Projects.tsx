@@ -14,10 +14,16 @@ export default function Projects() {
           {/* Project 1 */}
           <div className="border-b border-gray-200 pb-16 last:border-b-0">
             <div className="grid md:grid-cols-2 gap-8 items-start">
-              {/* Image */}
-              <div className="group relative h-64 rounded-lg overflow-hidden border bg-gray-50">
+           
+              <a
+                href="https://github.com/HamzahM03/NHC_COACH_MANAGER"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group relative block h-64 rounded-lg overflow-hidden border bg-gray-50"
+                aria-label="Open Sports Management System GitHub repository in a new tab"
+              >
                 <Image
-                  src="/SportsLogo.jpg"  // put file in /public/projects/
+                  src="/SportsLogo.jpg"
                   alt="Sports Management System screenshot"
                   fill
                   className="object-cover transition-transform duration-300 ease-out motion-safe:group-hover:scale-[1.03]"
@@ -25,7 +31,7 @@ export default function Projects() {
                   priority
                 />
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-              </div>
+              </a>
 
               {/* Content */}
               <div>
@@ -44,14 +50,22 @@ export default function Projects() {
                 </div>
 
                 <div className="flex gap-3">
-                  <a href="#" className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm hover:border-black">
+                  <a
+                    href="https://github.com/HamzahM03/NHC_COACH_MANAGER"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm hover:border-black"
+                  >
                     <SiGithub size={16} />
                     Code
                   </a>
-                  <a href="#" className="inline-flex items-center gap-2 rounded-md bg-black text-white px-3 py-2 text-sm hover:bg-gray-800">
-                    <ExternalLink size={16} />
+                  <button
+                    disabled
+                    className="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm bg-gray-200 text-gray-500 cursor-not-allowed"
+                  >
+                    <ExternalLink size={16} className="opacity-50" />
                     Live Demo
-                  </a>
+                  </button>
                 </div>
               </div>
             </div>
@@ -60,16 +74,23 @@ export default function Projects() {
           {/* Project 2 */}
           <div className="border-b border-gray-200 pb-16 last:border-b-0">
             <div className="grid md:grid-cols-2 gap-8 items-start">
-              <div className="group relative h-64 rounded-lg overflow-hidden border bg-gray-50">
+              
+              <a
+                href="https://github.com/CSI-Computer-Science-Club/resumer-builder"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group relative block h-64 rounded-lg overflow-hidden border bg-gray-50"
+                aria-label="Open AI Resume Builder GitHub repository in a new tab"
+              >
                 <Image
-                  src="/AIResumeBuilderLogo.jpg"       // put file in /public/projects/
+                  src="/AIResumeBuilderLogo.jpg"
                   alt="AI Resume Builder screenshot"
                   fill
                   className="object-cover transition-transform duration-300 ease-out motion-safe:group-hover:scale-[1.03]"
                   sizes="(min-width: 768px) 50vw, 100vw"
                 />
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-              </div>
+              </a>
 
               <div>
                 <h3 className="text-xl font-medium mb-4">AI Resume Builder</h3>
@@ -87,14 +108,22 @@ export default function Projects() {
                 </div>
 
                 <div className="flex gap-3">
-                  <a href="#" className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm hover:border-black">
+                  <a
+                    href="https://github.com/CSI-Computer-Science-Club/resumer-builder"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm hover:border-black"
+                  >
                     <SiGithub size={16} />
                     Code
                   </a>
-                  <a href="#" className="inline-flex items-center gap-2 rounded-md bg-black text-white px-3 py-2 text-sm hover:bg-gray-800">
-                    <ExternalLink size={16} />
+                  <button
+                    disabled
+                    className="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm bg-gray-200 text-gray-500 cursor-not-allowed"
+                  >
+                    <ExternalLink size={16} className="opacity-50" />
                     Live Demo
-                  </a>
+                  </button>
                 </div>
               </div>
             </div>
@@ -103,16 +132,23 @@ export default function Projects() {
           {/* Project 3 */}
           <div className="border-b border-gray-200 pb-16 last:border-b-0">
             <div className="grid md:grid-cols-2 gap-8 items-start">
-              <div className="group relative h-64 rounded-lg overflow-hidden border bg-gray-50">
+              
+              <a
+                href="https://github.com/HamzahM03/AIMealPlanner"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group relative block h-64 rounded-lg overflow-hidden border bg-gray-50"
+                aria-label="Open AI Meal Planner GitHub repository in a new tab"
+              >
                 <Image
-                  src="/AIMealPlannerLogo.jpg" 
+                  src="/AIMealPlannerLogo.jpg"
                   alt="AI Meal Planner screenshot"
                   fill
                   className="object-cover transition-transform duration-300 ease-out motion-safe:group-hover:scale-[1.03]"
                   sizes="(min-width: 768px) 50vw, 100vw"
                 />
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-              </div>
+              </a>
 
               <div>
                 <h3 className="text-xl font-medium mb-4">AI Meal Planner (CTP Hackathon)</h3>
@@ -130,14 +166,22 @@ export default function Projects() {
                 </div>
 
                 <div className="flex gap-3">
-                  <a href="#" className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm hover:border-black">
+                  <a
+                    href="https://github.com/HamzahM03/AIMealPlanner"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm hover:border-black"
+                  >
                     <SiGithub size={16} />
                     Code
                   </a>
-                  <a href="#" className="inline-flex items-center gap-2 rounded-md bg-black text-white px-3 py-2 text-sm hover:bg-gray-800">
-                    <ExternalLink size={16} />
+                  <button
+                    disabled
+                    className="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm bg-gray-200 text-gray-500 cursor-not-allowed"
+                  >
+                    <ExternalLink size={16} className="opacity-50" />
                     Live Demo
-                  </a>
+                  </button>
                 </div>
               </div>
             </div>
