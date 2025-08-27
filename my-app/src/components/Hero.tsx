@@ -27,7 +27,7 @@ export default function Hero() {
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <a
-            href="/resume.pdf"
+            href="/Resume.pdf"
             download
             className="bg-black text-white px-8 py-4 hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 text-sm font-medium rounded"
           >
