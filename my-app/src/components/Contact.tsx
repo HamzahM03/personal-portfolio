@@ -2,57 +2,130 @@
 
 import Section from "./Section";
 import { Mail } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Script from "next/script";
 
-type SubmitState = {
-  loading: boolean;
-  ok: boolean;
-  error: string;
-};
+type SubmitState = { loading: boolean; ok: boolean; error: string };
 
-const NAME_MAX = 100;
-const EMAIL_MAX = 254;
-const MESSAGE_MAX = 5000;
+const NAME_MAX = 50;
+const EMAIL_MAX = 100;
+const MESSAGE_MAX = 1000;
 
 export default function Contact() {
   const [status, setStatus] = useState<SubmitState>({ loading: false, ok: false, error: "" });
 
-  // controlled values so we can show counters
+  // Controlled inputs
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
+
+  // Turnstile
+  const [turnstileToken, setTurnstileToken] = useState<string>("");
+  const widgetRef = useRef<HTMLDivElement | null>(null);
+  const widgetIdRef = useRef<any>(null);
+  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!;
+
+  // Render Turnstile when script is ready
+  const renderTurnstile = () => {
+    // @ts-expect-error injected by script
+    if (typeof window !== "undefined" && window.turnstile && widgetRef.current && siteKey) {
+      // Prevent duplicate renders (hot reload etc.)
+      if (widgetIdRef.current) {
+        // @ts-expect-error
+        window.turnstile.reset(widgetIdRef.current);
+        return;
+      }
+      // @ts-expect-error
+      widgetIdRef.current = window.turnstile.render(widgetRef.current, {
+        sitekey: siteKey,
+        theme: "light",
+        callback: (token: string) => setTurnstileToken(token),
+        "error-callback": () => setTurnstileToken(""),
+        "expired-callback": () => setTurnstileToken(""),
+      });
+    }
+  };
+
+  useEffect(() => {
+    renderTurnstile();
+    return () => {
+      // Clean up on unmount
+      // @ts-expect-error
+      if (typeof window !== "undefined" && window.turnstile && widgetIdRef.current) {
+        // @ts-expect-error
+        window.turnstile.remove(widgetIdRef.current);
+        widgetIdRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [siteKey]);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setStatus({ loading: true, ok: false, error: "" });
 
     try {
-      const payload = { name, email, message, website: "" }; // keep honeypot empty
+      if (!turnstileToken) throw new Error("Please complete the verification.");
 
+      const payload = { name, email, message, website: "", turnstileToken };
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Failed to send");
+      const data = await res.json().catch(() => ({}));
+
+      if (res.status === 429) {
+        throw new Error(
+          data?.error ||
+            "You’ve hit the limit. Please try again later or from a different network."
+        );
+      }
+      if (!res.ok) {
+        throw new Error(data?.error || "Failed to send");
+      }
 
       setStatus({ loading: false, ok: true, error: "" });
-      // reset values + counters
       setName("");
       setEmail("");
       setMessage("");
+      setTurnstileToken("");
+
+      // Reset Turnstile so the user can send another message
+      // @ts-expect-error
+      if (typeof window !== "undefined" && window.turnstile) {
+        if (widgetIdRef.current) {
+          // @ts-expect-error
+          window.turnstile.reset(widgetIdRef.current);
+        } else if (widgetRef.current) {
+          renderTurnstile();
+        }
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Something went wrong";
       setStatus({ loading: false, ok: false, error: msg });
     }
   }
 
-  const nearLimit = (len: number, max: number) => max - len <= 20; // highlight when close
+  const isFormValid =
+    !!name.trim() && !!email.trim() && !!message.trim() && !!turnstileToken && !status.loading;
+
+  const emailPattern =
+    // loose HTML-side pattern (backend still validates)
+    // RFC-complete regex is overkill; this prevents obvious typos
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   return (
     <Section id="contact" className="py-32 px-6 lg:px-8 bg-gray-50">
+      {/* Turnstile script (loads once on this page) */}
+      <Script
+        src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+        async
+        defer
+        onLoad={renderTurnstile}
+      />
+
       <div className="max-w-2xl mx-auto">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-light mb-8 tracking-tight">Let&apos;s Work Together</h2>
@@ -62,7 +135,7 @@ export default function Contact() {
           </p>
         </div>
 
-        <form className="space-y-6" onSubmit={onSubmit}>
+        <form className="space-y-6" onSubmit={onSubmit} noValidate>
           {/* Honeypot (hidden) */}
           <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" />
 
@@ -82,11 +155,9 @@ export default function Contact() {
                 className="w-full px-4 py-3 border border-gray-300 focus:border-black outline-none transition-colors bg-white"
                 placeholder="Your full name"
                 aria-describedby="name-count"
+                aria-invalid={name.length > NAME_MAX}
               />
-              <div
-                id="name-count"
-                className={`mt-1 text-xs ${nearLimit(name.length, NAME_MAX) ? "text-amber-600" : "text-gray-500"}`}
-              >
+              <div id="name-count" className="mt-1 text-xs text-gray-500">
                 {name.length}/{NAME_MAX}
               </div>
             </div>
@@ -106,11 +177,11 @@ export default function Contact() {
                 className="w-full px-4 py-3 border border-gray-300 focus:border-black outline-none transition-colors bg-white"
                 placeholder="your.email@example.com"
                 aria-describedby="email-count"
+                aria-invalid={email.length > EMAIL_MAX || (!!email && !emailPattern.test(email))}
+                inputMode="email"
+                pattern={emailPattern.source}
               />
-              <div
-                id="email-count"
-                className={`mt-1 text-xs ${nearLimit(email.length, EMAIL_MAX) ? "text-amber-600" : "text-gray-500"}`}
-              >
+              <div id="email-count" className="mt-1 text-xs text-gray-500">
                 {email.length}/{EMAIL_MAX}
               </div>
             </div>
@@ -131,25 +202,28 @@ export default function Contact() {
               className="w-full px-4 py-3 border border-gray-300 focus:border-black outline-none transition-colors resize-vertical bg-white"
               placeholder="Tell me about your project or just say hello..."
               aria-describedby="message-count"
+              aria-invalid={message.length > MESSAGE_MAX}
             />
-            <div
-              id="message-count"
-              className={`mt-1 text-xs ${nearLimit(message.length, MESSAGE_MAX) ? "text-amber-600" : "text-gray-500"}`}
-            >
+            <div id="message-count" className="mt-1 text-xs text-gray-500">
               {message.length}/{MESSAGE_MAX}
             </div>
           </div>
 
+          {/* Turnstile widget mounts here */}
+          <div ref={widgetRef} className="mt-2" />
+
           <div className="text-center pt-2">
             <button
               type="submit"
-              disabled={status.loading}
+              disabled={!isFormValid}
               className="bg-black text-white px-8 py-4 hover:bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-2 text-sm font-medium rounded"
             >
               <Mail size={18} />
               {status.loading ? "Sending..." : "Send Message"}
             </button>
-            {status.ok && <p className="mt-3 text-green-600 text-sm">Message sent! I’ll get back to you soon.</p>}
+            {status.ok && (
+              <p className="mt-3 text-green-600 text-sm">Message sent! I’ll get back to you soon.</p>
+            )}
             {status.error && <p className="mt-3 text-red-600 text-sm">{status.error}</p>}
           </div>
         </form>
