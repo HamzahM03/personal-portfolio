@@ -10,32 +10,46 @@ type SubmitState = {
   error: string;
 };
 
+const NAME_MAX = 100;
+const EMAIL_MAX = 254;
+const MESSAGE_MAX = 5000;
+
 export default function Contact() {
   const [status, setStatus] = useState<SubmitState>({ loading: false, ok: false, error: "" });
+
+  // controlled values so we can show counters
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setStatus({ loading: true, ok: false, error: "" });
 
-    const form = e.currentTarget;
-    const formData = new FormData(form);
-    const payload = Object.fromEntries(formData.entries());
-
     try {
+      const payload = { name, email, message, website: "" }; // keep honeypot empty
+
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Failed to send");
+
       setStatus({ loading: false, ok: true, error: "" });
-      form.reset();
+      // reset values + counters
+      setName("");
+      setEmail("");
+      setMessage("");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Something went wrong";
       setStatus({ loading: false, ok: false, error: msg });
     }
   }
+
+  const nearLimit = (len: number, max: number) => max - len <= 20; // highlight when close
 
   return (
     <Section id="contact" className="py-32 px-6 lg:px-8 bg-gray-50">
@@ -62,10 +76,21 @@ export default function Contact() {
                 id="name"
                 name="name"
                 required
+                maxLength={NAME_MAX}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 focus:border-black outline-none transition-colors bg-white"
                 placeholder="Your full name"
+                aria-describedby="name-count"
               />
+              <div
+                id="name-count"
+                className={`mt-1 text-xs ${nearLimit(name.length, NAME_MAX) ? "text-amber-600" : "text-gray-500"}`}
+              >
+                {name.length}/{NAME_MAX}
+              </div>
             </div>
+
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                 Email
@@ -75,9 +100,19 @@ export default function Contact() {
                 id="email"
                 name="email"
                 required
+                maxLength={EMAIL_MAX}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 focus:border-black outline-none transition-colors bg-white"
                 placeholder="your.email@example.com"
+                aria-describedby="email-count"
               />
+              <div
+                id="email-count"
+                className={`mt-1 text-xs ${nearLimit(email.length, EMAIL_MAX) ? "text-amber-600" : "text-gray-500"}`}
+              >
+                {email.length}/{EMAIL_MAX}
+              </div>
             </div>
           </div>
 
@@ -90,9 +125,19 @@ export default function Contact() {
               name="message"
               rows={6}
               required
+              maxLength={MESSAGE_MAX}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
               className="w-full px-4 py-3 border border-gray-300 focus:border-black outline-none transition-colors resize-vertical bg-white"
               placeholder="Tell me about your project or just say hello..."
+              aria-describedby="message-count"
             />
+            <div
+              id="message-count"
+              className={`mt-1 text-xs ${nearLimit(message.length, MESSAGE_MAX) ? "text-amber-600" : "text-gray-500"}`}
+            >
+              {message.length}/{MESSAGE_MAX}
+            </div>
           </div>
 
           <div className="text-center pt-2">
