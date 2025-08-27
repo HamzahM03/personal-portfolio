@@ -5,6 +5,26 @@ import { Mail } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import Script from "next/script";
 
+// ---- Minimal types for Cloudflare Turnstile on window ----
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (
+        container: HTMLElement,
+        options: {
+          sitekey: string;
+          theme?: "light" | "dark" | "auto";
+          callback?: (token: string) => void;
+          "error-callback"?: () => void;
+          "expired-callback"?: () => void;
+        }
+      ) => string; // widgetId
+      reset: (widgetId?: string) => void;
+      remove: (widgetId: string) => void;
+    };
+  }
+}
+
 type SubmitState = { loading: boolean; ok: boolean; error: string };
 
 const NAME_MAX = 50;
@@ -22,37 +42,33 @@ export default function Contact() {
   // Turnstile
   const [turnstileToken, setTurnstileToken] = useState<string>("");
   const widgetRef = useRef<HTMLDivElement | null>(null);
-  const widgetIdRef = useRef<any>(null);
+  const widgetIdRef = useRef<string | null>(null);
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!;
 
-  // Render Turnstile when script is ready
   const renderTurnstile = () => {
-    // @ts-expect-error injected by script
-    if (typeof window !== "undefined" && window.turnstile && widgetRef.current && siteKey) {
-      // Prevent duplicate renders (hot reload etc.)
-      if (widgetIdRef.current) {
-        // @ts-expect-error
-        window.turnstile.reset(widgetIdRef.current);
-        return;
-      }
-      // @ts-expect-error
-      widgetIdRef.current = window.turnstile.render(widgetRef.current, {
-        sitekey: siteKey,
-        theme: "light",
-        callback: (token: string) => setTurnstileToken(token),
-        "error-callback": () => setTurnstileToken(""),
-        "expired-callback": () => setTurnstileToken(""),
-      });
+    if (typeof window === "undefined") return;
+    if (!window.turnstile) return;
+    if (!widgetRef.current || !siteKey) return;
+
+    // Prevent duplicate renders (hot reload/etc.)
+    if (widgetIdRef.current) {
+      window.turnstile.reset(widgetIdRef.current);
+      return;
     }
+
+    widgetIdRef.current = window.turnstile.render(widgetRef.current, {
+      sitekey: siteKey,
+      theme: "light",
+      callback: (token: string) => setTurnstileToken(token),
+      "error-callback": () => setTurnstileToken(""),
+      "expired-callback": () => setTurnstileToken(""),
+    });
   };
 
   useEffect(() => {
     renderTurnstile();
     return () => {
-      // Clean up on unmount
-      // @ts-expect-error
       if (typeof window !== "undefined" && window.turnstile && widgetIdRef.current) {
-        // @ts-expect-error
         window.turnstile.remove(widgetIdRef.current);
         widgetIdRef.current = null;
       }
@@ -74,12 +90,11 @@ export default function Contact() {
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json().catch(() => ({}));
+      const data = await res.json().catch(() => ({} as { error?: string }));
 
       if (res.status === 429) {
         throw new Error(
-          data?.error ||
-            "You’ve hit the limit. Please try again later or from a different network."
+          data?.error || "You’ve hit the limit. Please try again later or from a different network."
         );
       }
       if (!res.ok) {
@@ -93,10 +108,8 @@ export default function Contact() {
       setTurnstileToken("");
 
       // Reset Turnstile so the user can send another message
-      // @ts-expect-error
       if (typeof window !== "undefined" && window.turnstile) {
         if (widgetIdRef.current) {
-          // @ts-expect-error
           window.turnstile.reset(widgetIdRef.current);
         } else if (widgetRef.current) {
           renderTurnstile();
@@ -111,20 +124,12 @@ export default function Contact() {
   const isFormValid =
     !!name.trim() && !!email.trim() && !!message.trim() && !!turnstileToken && !status.loading;
 
-  const emailPattern =
-    // loose HTML-side pattern (backend still validates)
-    // RFC-complete regex is overkill; this prevents obvious typos
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   return (
     <Section id="contact" className="py-32 px-6 lg:px-8 bg-gray-50">
       {/* Turnstile script (loads once on this page) */}
-      <Script
-        src="https://challenges.cloudflare.com/turnstile/v0/api.js"
-        async
-        defer
-        onLoad={renderTurnstile}
-      />
+      <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer onLoad={renderTurnstile} />
 
       <div className="max-w-2xl mx-auto">
         <div className="text-center mb-16">
@@ -155,7 +160,6 @@ export default function Contact() {
                 className="w-full px-4 py-3 border border-gray-300 focus:border-black outline-none transition-colors bg-white"
                 placeholder="Your full name"
                 aria-describedby="name-count"
-                aria-invalid={name.length > NAME_MAX}
               />
               <div id="name-count" className="mt-1 text-xs text-gray-500">
                 {name.length}/{NAME_MAX}
@@ -177,7 +181,6 @@ export default function Contact() {
                 className="w-full px-4 py-3 border border-gray-300 focus:border-black outline-none transition-colors bg-white"
                 placeholder="your.email@example.com"
                 aria-describedby="email-count"
-                aria-invalid={email.length > EMAIL_MAX || (!!email && !emailPattern.test(email))}
                 inputMode="email"
                 pattern={emailPattern.source}
               />
@@ -202,7 +205,6 @@ export default function Contact() {
               className="w-full px-4 py-3 border border-gray-300 focus:border-black outline-none transition-colors resize-vertical bg-white"
               placeholder="Tell me about your project or just say hello..."
               aria-describedby="message-count"
-              aria-invalid={message.length > MESSAGE_MAX}
             />
             <div id="message-count" className="mt-1 text-xs text-gray-500">
               {message.length}/{MESSAGE_MAX}
@@ -221,9 +223,7 @@ export default function Contact() {
               <Mail size={18} />
               {status.loading ? "Sending..." : "Send Message"}
             </button>
-            {status.ok && (
-              <p className="mt-3 text-green-600 text-sm">Message sent! I’ll get back to you soon.</p>
-            )}
+            {status.ok && <p className="mt-3 text-green-600 text-sm">Message sent! I’ll get back to you soon.</p>}
             {status.error && <p className="mt-3 text-red-600 text-sm">{status.error}</p>}
           </div>
         </form>
