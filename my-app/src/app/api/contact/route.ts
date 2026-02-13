@@ -15,8 +15,8 @@ const ContactSchema = z.object({
   name: z.string().min(2).max(50),
   email: z.string().email().max(100),
   message: z.string().min(10).max(1000),
-  website: z.string().optional(),        // honeypot
-  turnstileToken: z.string().min(5),     // from client
+  website: z.string().optional(), // honeypot
+  turnstileToken: z.string().min(5), // from client
 });
 type ContactPayload = z.infer<typeof ContactSchema>;
 
@@ -56,10 +56,44 @@ function escapeHtml(str = ""): string {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
 }
+
 function getClientIp(req: Request): string {
+  // Vercel sometimes sets this explicitly; fall back to standard proxies.
+  const xvf = req.headers.get("x-vercel-forwarded-for");
+  if (xvf) return xvf.split(",")[0].trim();
+
   const xff = req.headers.get("x-forwarded-for");
   if (xff) return xff.split(",")[0].trim();
+
   return req.headers.get("x-real-ip") || "unknown";
+}
+
+async function verifyTurnstileOrThrow(turnstileToken: string, ip: string) {
+  // In dev, prefer Turnstile test keys and skip server verification for smoother DX.
+  if (isDev) return;
+
+  const secret = process.env.TURNSTILE_SECRET_KEY;
+  if (!secret) throw new Error("Missing TURNSTILE_SECRET_KEY");
+
+  // Cloudflare expects form-encoded data; this is the most compatible way.
+  const formData = new URLSearchParams();
+  formData.append("secret", secret);
+  formData.append("response", turnstileToken);
+  if (ip !== "unknown") formData.append("remoteip", ip);
+
+  const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: formData.toString(),
+    cache: "no-store",
+  });
+
+  const data = (await res.json()) as { success: boolean; ["error-codes"]?: string[] };
+
+  if (!data.success) {
+    console.error("Turnstile verify failed:", data["error-codes"]);
+    throw new Error("Turnstile verification failed");
+  }
 }
 
 // ---------- HANDLER ----------
@@ -72,8 +106,12 @@ export async function POST(req: Request): Promise<Response> {
 
     const body = (await req.json()) as unknown;
     const parsed = ContactSchema.safeParse(body);
+
     if (!parsed.success) {
-      return Response.json({ error: "Validation failed", details: parsed.error.flatten() }, { status: 400 });
+      return Response.json(
+        { error: "Validation failed", details: parsed.error.flatten() },
+        { status: 400 }
+      );
     }
 
     const { name, email, message, website, turnstileToken } = parsed.data as ContactPayload;
@@ -85,7 +123,14 @@ export async function POST(req: Request): Promise<Response> {
     const ip = getClientIp(req);
     const emailKey = email.toLowerCase();
 
-    // ---- RATE LIMITS (order matters) ----
+    // ---- VERIFY TURNSTILE (prod) ----
+    try {
+      await verifyTurnstileOrThrow(turnstileToken, ip);
+    } catch {
+      return Response.json({ error: "Verification failed. Please try again." }, { status: 400 });
+    }
+
+    // ---- RATE LIMITS ----
     // 1) Once per Turnstile token
     if (!(await oncePerToken.limit(`ct:token:${turnstileToken}`)).success) {
       return Response.json({ error: "Please re-verify and try again." }, { status: 429 });
@@ -98,7 +143,10 @@ export async function POST(req: Request): Promise<Response> {
 
     // 3) Daily per IP
     if (!(await dailyPerIp.limit(`ct:ip:${ip}`)).success) {
-      return Response.json({ error: "Daily limit reached for your network. Try again tomorrow." }, { status: 429 });
+      return Response.json(
+        { error: "Daily limit reached for your network. Try again tomorrow." },
+        { status: 429 }
+      );
     }
 
     // 4) Daily per email
@@ -110,25 +158,6 @@ export async function POST(req: Request): Promise<Response> {
     if (!(await globalDaily.limit(`ct:global`)).success) {
       return Response.json({ error: "The service is busy. Please try again later." }, { status: 429 });
     }
-
-    // ---- VERIFY TURNSTILE ----
-    if (!isDev) {
-      const verify = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          secret: process.env.TURNSTILE_SECRET_KEY,
-          response: turnstileToken,
-          remoteip: ip !== "unknown" ? ip : undefined,
-        }),
-        cache: "no-store",
-      }).then((r) => r.json() as Promise<{ success: boolean; ["error-codes"]?: string[] }>);
-      if (!verify.success) {
-        console.error("Turnstile verify failed:", verify["error-codes"]);
-        return Response.json({ error: "Verification failed. Please try again." }, { status: 400 });
-      }
-    }
-    // (In dev, use Turnstile test keys; skipping verification here keeps local DX smooth.)
 
     // ---- CONFIG ----
     const to = process.env.CONTACT_TO;
@@ -164,7 +193,8 @@ ${message}
       subject,
       html,
       text,
-      replyTo: email, // so replying goes to the sender
+      // If your Resend SDK expects reply_to instead, swap this key.
+      replyTo: email,
       headers: { "X-Contact-Source": "portfolio" },
     });
 
