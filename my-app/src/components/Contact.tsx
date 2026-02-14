@@ -10,20 +10,33 @@ const NAME_MAX = 50;
 const EMAIL_MAX = 100;
 const MESSAGE_MAX = 1000;
 
-const COOLDOWN_SECONDS = 600; // 10 minutes
+const COOLDOWN_SECONDS = 600;
 const COOLDOWN_KEY = "contact_cooldown_until";
 
 const initialState: FormState = { success: false };
 
 export default function Contact() {
   const [cooldownUntil, setCooldownUntil] = useState<number>(0);
+  const [cooldownMsg, setCooldownMsg] = useState("");
   const [state, formAction, isPending] = useActionState(submitContactForm, initialState);
 
-  // Load any existing cooldown on mount
+  // Load cooldown on mount
   useEffect(() => {
     const saved = Number(localStorage.getItem(COOLDOWN_KEY) ?? "0");
     setCooldownUntil(saved);
   }, []);
+
+  const isCoolingDown = Date.now() < cooldownUntil;
+  const disableSubmit = isPending || isCoolingDown;
+
+  function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
+    if (isCoolingDown) {
+      e.preventDefault();
+      setCooldownMsg("Please wait a few minutes before sending another message.");
+      return;
+    }
+    setCooldownMsg("");
+  }
 
   // Start cooldown on success + reset form
   useEffect(() => {
@@ -37,9 +50,6 @@ export default function Contact() {
     setCooldownUntil(until);
   }, [state.success]);
 
-  const isCoolingDown = Date.now() < cooldownUntil;
-  const disableSubmit = isPending || isCoolingDown;
-
   return (
     <Section id="contact" className="py-32 px-6 lg:px-8 bg-gray-50">
       <div className="max-w-2xl mx-auto">
@@ -51,7 +61,13 @@ export default function Contact() {
           </p>
         </div>
 
-        <form id="contact-form" className="space-y-6" action={formAction} noValidate>
+        <form
+          id="contact-form"
+          className="space-y-6"
+          action={formAction}
+          onSubmit={handleSubmit}
+          noValidate
+        >
           <div className="grid md:grid-cols-2 gap-6">
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
@@ -119,6 +135,8 @@ export default function Contact() {
             {!state.success && isCoolingDown && !isPending && (
               <p className="mt-3 text-gray-600 text-sm">Please wait a few minutes before sending another message.</p>
             )}
+
+            {cooldownMsg && <p className="mt-3 text-red-600 text-sm">{cooldownMsg}</p>}
           </div>
         </form>
       </div>
