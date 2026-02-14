@@ -3,24 +3,42 @@
 import Section from "./Section";
 import { Mail } from "lucide-react";
 import * as React from "react";
-import { useActionState, useEffect } from "react";
-import { submitContactForm, type FormState } from "@/app/actions/contact"; // adjust path if needed
+import { useActionState, useEffect, useState } from "react";
+import { submitContactForm, type FormState } from "@/app/actions/contact";
 
 const NAME_MAX = 50;
 const EMAIL_MAX = 100;
 const MESSAGE_MAX = 1000;
 
+const COOLDOWN_SECONDS = 600; // 10 minutes
+const COOLDOWN_KEY = "contact_cooldown_until";
+
 const initialState: FormState = { success: false };
 
 export default function Contact() {
+  const [cooldownUntil, setCooldownUntil] = useState<number>(0);
   const [state, formAction, isPending] = useActionState(submitContactForm, initialState);
 
+  // Load any existing cooldown on mount
   useEffect(() => {
-    if (state.success) {
-      const form = document.getElementById("contact-form") as HTMLFormElement | null;
-      form?.reset();
-    }
+    const saved = Number(localStorage.getItem(COOLDOWN_KEY) ?? "0");
+    setCooldownUntil(saved);
+  }, []);
+
+  // Start cooldown on success + reset form
+  useEffect(() => {
+    if (!state.success) return;
+
+    const form = document.getElementById("contact-form") as HTMLFormElement | null;
+    form?.reset();
+
+    const until = Date.now() + COOLDOWN_SECONDS * 1000;
+    localStorage.setItem(COOLDOWN_KEY, String(until));
+    setCooldownUntil(until);
   }, [state.success]);
+
+  const isCoolingDown = Date.now() < cooldownUntil;
+  const disableSubmit = isPending || isCoolingDown;
 
   return (
     <Section id="contact" className="py-32 px-6 lg:px-8 bg-gray-50">
@@ -88,15 +106,19 @@ export default function Contact() {
           <div className="text-center pt-2">
             <button
               type="submit"
-              disabled={isPending}
+              disabled={disableSubmit}
               className="bg-black text-white px-8 py-4 hover:bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-2 text-sm font-medium rounded"
             >
               <Mail size={18} />
-              {isPending ? "Sending..." : "Send Message"}
+              {isPending ? "Sending..." : isCoolingDown ? "Please wait a few minutes..." : "Send Message"}
             </button>
 
             {state.success && <p className="mt-3 text-green-600 text-sm">{state.message ?? "Sent!"}</p>}
             {!state.success && state.error && <p className="mt-3 text-red-600 text-sm">{state.error}</p>}
+
+            {!state.success && isCoolingDown && !isPending && (
+              <p className="mt-3 text-gray-600 text-sm">Please wait a few minutes before sending another message.</p>
+            )}
           </div>
         </form>
       </div>
