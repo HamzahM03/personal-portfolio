@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { parseContact } from "./parseContact";
 
-describe("parseContact", () => {
+describe("contact form input validation", () => {
   it("rejects empty name", () => {
     const res = parseContact({ name: "", email: "a@b.com", message: "hi" });
     expect(res.success).toBe(false);
