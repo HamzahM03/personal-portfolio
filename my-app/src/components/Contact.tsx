@@ -66,7 +66,7 @@ export default function Contact() {
           className="space-y-6"
           action={formAction}
           onSubmit={handleSubmit}
-          noValidate
+        
         >
           <div className="grid md:grid-cols-2 gap-6">
             <div>
